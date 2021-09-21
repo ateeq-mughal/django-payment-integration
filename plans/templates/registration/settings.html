@@ -1,0 +1,21 @@
+{% extends 'plans/base.html' %}
+{% block content %}
+<div class="container">
+    {% if cancel_at_period_end %}
+        Your membership will run to the end of billing cycle.
+
+    {% elif membership %}
+
+    <form action="{% url 'settings' %}" method="POST">
+        {% csrf_token %}
+        <input type="submit" value="cancel membership">
+    </form>
+
+    {% else %}
+
+    <a href="{% url 'join' %}">Get Membership</a>
+
+    {% endif %}
+
+</div>
+{% endblock %}
