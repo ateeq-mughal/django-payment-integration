@@ -7,6 +7,8 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required, user_passes_test
 import stripe
 from django.http import HttpResponse
+from django.contrib import messages
+from django.http import HttpResponseRedirect
 
 
 
@@ -143,38 +145,68 @@ def checkout_sepa(request):
         if request.POST['plan'] == 'gold yearly':
             plan = 'price_1JbwHtBUeFQdhI0DPZnqjnje'
 
+        try:
+            source = stripe.Source.create(
+            type='sepa_debit',
+            sepa_debit={'iban': request.POST['iban']},
+            currency='eur',
+            owner={'name': request.POST['name'],},)
 
-        source = stripe.Source.create(
-        type='sepa_debit',
-        sepa_debit={'iban': request.POST['iban']},
-        currency='eur',
-        owner={'name': request.POST['name'],},)
+            stripe_customer_sepa = stripe.Customer.create(
+                                                            email=request.user.email, 
+                                                            source=source,)
+            
+            if request.POST['coupon'] in coupons:
+                percentage = coupons[request.POST['coupon'].lower()]
 
-        stripe_customer_sepa = stripe.Customer.create(
-                                                        email=request.user.email, 
-                                                        source=source,)
+                try:
+                    coupon = stripe.Coupon.create(duration='once', id=request.POST['coupon'].lower(), percent_off=percentage)
+                except:
+                    pass
+                subscription = stripe.Subscription.create(customer=stripe_customer_sepa.id, items=[{'plan':plan}], coupon=request.POST['coupon'].lower())
+
+            else:
+                subscription = stripe.Subscription.create(customer=stripe_customer_sepa.id, items=[{'plan':plan}])
+            
+            customer = Customer()
+            customer.user = request.user
+            customer.stripeid = stripe_customer_sepa.id
+            customer.membership = True
+            customer.cancel_at_period_end = False
+            customer.stripe_subscription_id = subscription.id
+            customer.save()
         
-        if request.POST['coupon'] in coupons:
-            percentage = coupons[request.POST['coupon'].lower()]
-
-            try:
-                coupon = stripe.Coupon.create(duration='once', id=request.POST['coupon'].lower(), percent_off=percentage)
-            except:
-                pass
-            subscription = stripe.Subscription.create(customer=stripe_customer_sepa.id, items=[{'plan':plan}], coupon=request.POST['coupon'].lower())
-
-        else:
-            subscription = stripe.Subscription.create(customer=stripe_customer_sepa.id, items=[{'plan':plan}])
-        
-        customer = Customer()
-        customer.user = request.user
-        customer.stripeid = stripe_customer_sepa.id
-        customer.membership = True
-        customer.cancel_at_period_end = False
-        customer.stripe_subscription_id = subscription.id
-        customer.save()
-    
-        return redirect('home')
+            return redirect('home')
+        except:
+            messages.warning(request, "Invalid Name or IBAN number, Please enter Again!")
+            
+            plan = 'basic'
+            coupon = 'none'
+            price = 1000
+            og_dollar = 10
+            coupon_dollar = 0
+            final_dollar = 10
+            if request.method == 'POST' and 'plan' in request.POST:
+                if request.POST['plan'] == 'gold':
+                    plan = 'gold'
+                    price = 2000
+                    og_dollar = 20
+                    final_dollar = 20
+                if request.POST['plan'] == 'gold yearly':
+                        plan = 'gold yearly'
+                        price = 5000
+                        og_dollar = 50
+                        final_dollar = 50
+            
+            if request.method == 'POST' and 'coupon' in request.POST:
+                if request.POST['coupon'].lower() in coupons:
+                    coupon = request.POST['coupon'].lower()
+                    percentage = coupons[coupon]
+                    coupon_price = int((percentage / 100) * price)
+                    price -= coupon_price
+                    coupon_dollar = str(coupon_price)[:-2] + "." + str(coupon_price)[-2:]
+                    final_dollar = str(price)[:-2] + "." + str(price)[-2:]
+            return render(request, 'plans/checkout_sepa.html', {'plan':plan, 'coupon':coupon, 'price':price, 'og_dollar':og_dollar, 'coupon_dollar':coupon_dollar, 'final_dollar':final_dollar})
     
     else:
         

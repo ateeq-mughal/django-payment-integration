@@ -24,6 +24,8 @@
         <a class="p-2 text-dark" href="{% url 'login' %}">Log In</a>
         {% endif %}
       </nav>
+      
+
       {% if user.is_authenticated == False %}
       <a class="btn btn-outline-primary" href="{% url 'signup' %}">Sign up</a>
       {% endif %}
