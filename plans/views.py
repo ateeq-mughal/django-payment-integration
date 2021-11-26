@@ -59,8 +59,9 @@ def checkout(request):
     coupons = {'welcome': 10, 'cheema': 50}
 
     if request.method == 'POST':
-        stripe_customer = stripe.Customer.create(
-            email=request.user.email, source=request.POST['stripeToken'])
+        print("TOKEEEENNNN", request.POST)
+        '''stripe_customer = stripe.Customer.create(
+            email=request.user.email, source=request.POST['stripeToken'])'''
         plan = 'price_1Ja5uYBUeFQdhI0Dj7rrVUHx'
 
         if request.POST['plan'] == 'gold':
@@ -80,8 +81,8 @@ def checkout(request):
                                                       {'plan': plan}], coupon=request.POST['coupon'].lower())
 
         else:
-            subscription = stripe.Subscription.create(
-                customer=stripe_customer.id, items=[{'plan': plan}])
+            '''subscription = stripe.Subscription.create(
+                customer=stripe_customer.id, items=[{'plan': plan}])'''
 
         customer = Customer()
         customer.user = request.user
@@ -136,17 +137,20 @@ def checkout_sepa(request):
         pass
 
     coupons = {'welcome': 10, 'cheema': 50}
+    tax= False
 
     if request.method == 'POST':
-        print("YAYYYYYYYYYYYY DEKHHHH", dict(request.POST))
+        # print("YAYYYYYYYYYYYY DEKHHHH", dict(request.POST))
+        tax = False
 
-        plan = 'price_1JbwHHBUeFQdhI0DOhDF6JwK'
+        plan = 'price_1K07XzBUeFQdhI0DRWtvcoFj'
 
         if request.POST['plan'] == 'gold':
-            plan = 'price_1JbwHVBUeFQdhI0DO5yYzRSP'
+            plan = 'price_1K07YlBUeFQdhI0DEacPCKEl'
 
         if request.POST['plan'] == 'gold yearly':
-            plan = 'price_1JbwHtBUeFQdhI0DPZnqjnje'
+            plan = 'price_1K07aQBUeFQdhI0DASrpmrw0'
+            tax = True
 
         try:
             source = stripe.Source.create(
@@ -157,6 +161,8 @@ def checkout_sepa(request):
 
             stripe_customer_sepa = stripe.Customer.create(
                 email=request.user.email,
+                address = {"country": "DE", "postal_code": "94103"},
+                expand = ["tax"],
                 source=source,)
 
             if request.POST['coupon'] in coupons:
@@ -167,12 +173,16 @@ def checkout_sepa(request):
                         duration='once', id=request.POST['coupon'].lower(), percent_off=percentage)
                 except:
                     pass
-                subscription = stripe.Subscription.create(customer=stripe_customer_sepa.id, items=[
-                                                          {'plan': plan}], coupon=request.POST['coupon'].lower())
+                subscription = stripe.Subscription.create(
+                                                            customer=stripe_customer_sepa.id, 
+                                                            items=[{'plan': plan}], 
+                                                            automatic_tax={"enabled": True,},
+                                                            coupon=request.POST['coupon'].lower()
+                                                        )
 
             else:
                 subscription = stripe.Subscription.create(
-                    customer=stripe_customer_sepa.id, items=[{'plan': plan}])
+                    customer=stripe_customer_sepa.id, items=[{'plan': plan}], automatic_tax={"enabled": True,})
 
             customer = Customer()
             customer.user = request.user
@@ -189,21 +199,21 @@ def checkout_sepa(request):
 
             plan = 'basic'
             coupon = 'none'
-            price = 1000
-            og_dollar = 10
+            price = 2500
+            og_dollar = 25
             coupon_dollar = 0
-            final_dollar = 10
+            final_dollar = 25
             if request.method == 'POST' and 'plan' in request.POST:
                 if request.POST['plan'] == 'gold':
                     plan = 'gold'
-                    price = 2000
-                    og_dollar = 20
-                    final_dollar = 20
-                if request.POST['plan'] == 'gold yearly':
-                    plan = 'gold yearly'
                     price = 5000
                     og_dollar = 50
                     final_dollar = 50
+                if request.POST['plan'] == 'gold yearly':
+                    plan = 'gold yearly'
+                    price = 50000
+                    og_dollar = 500
+                    final_dollar = 500
 
             if request.method == 'POST' and 'coupon' in request.POST:
                 if request.POST['coupon'].lower() in coupons:
@@ -214,27 +224,39 @@ def checkout_sepa(request):
                     coupon_dollar = str(coupon_price)[
                         :-2] + "." + str(coupon_price)[-2:]
                     final_dollar = str(price)[:-2] + "." + str(price)[-2:]
-            return render(request, 'plans/checkout_sepa.html', {'plan': plan, 'coupon': coupon, 'price': price, 'og_dollar': og_dollar, 'coupon_dollar': coupon_dollar, 'final_dollar': final_dollar})
+            
+            context = {
+                'plan': plan, 
+                'coupon': coupon, 
+                'price': price, 
+                'og_dollar': og_dollar, 
+                'coupon_dollar': coupon_dollar, 
+                'final_dollar': final_dollar,
+                'tax': 'true'}
+
+            return render(request, 'plans/checkout_sepa.html', context)
 
     else:
-
+        tax = True
         plan = 'basic'
         coupon = 'none'
-        price = 1000
-        og_dollar = 10
+        price = 2500
+        og_dollar = 25
         coupon_dollar = 0
-        final_dollar = 10
+        final_dollar = 25
         if request.method == 'GET' and 'plan' in request.GET:
             if request.GET['plan'] == 'gold':
                 plan = 'gold'
-                price = 2000
-                og_dollar = 20
-                final_dollar = 20
-            if request.GET['plan'] == 'gold yearly':
-                plan = 'gold yearly'
                 price = 5000
                 og_dollar = 50
                 final_dollar = 50
+                tax = True
+            if request.GET['plan'] == 'gold yearly':
+                plan = 'gold yearly'
+                price = 50000
+                og_dollar = 500
+                final_dollar = 500
+                tax = True
 
         if request.method == 'GET' and 'coupon' in request.GET:
             if request.GET['coupon'].lower() in coupons:
@@ -245,7 +267,18 @@ def checkout_sepa(request):
                 coupon_dollar = str(coupon_price)[
                     :-2] + "." + str(coupon_price)[-2:]
                 final_dollar = str(price)[:-2] + "." + str(price)[-2:]
-        return render(request, 'plans/checkout_sepa.html', {'plan': plan, 'coupon': coupon, 'price': price, 'og_dollar': og_dollar, 'coupon_dollar': coupon_dollar, 'final_dollar': final_dollar})
+
+        context = {
+                'plan': plan, 
+                'coupon': coupon, 
+                'price': price, 
+                'og_dollar': og_dollar, 
+                'coupon_dollar': coupon_dollar, 
+                'final_dollar': final_dollar,
+                'tax': tax}
+
+
+        return render(request, 'plans/checkout_sepa.html', context)
 
 
 def settings(request):

@@ -12,6 +12,8 @@
 {% endfor %}
 {% endif %}
 
+
+
 <h1 class="row justify-content-center">Payment with SEPA<br></h1>
 <div class="container">
   <div class="row justify-content-center">
@@ -41,6 +43,12 @@
           <span>Total (USD)</span>
           <strong>€{{ final_dollar }}</strong>
         </li>
+        {% if tax %}
+        <li class="list-group-item d-flex justify-content-between">
+          <span>Tax (charged inclusively)</span>
+          <strong>19%</strong>
+        </li>
+         {% endif %}
       </ul>
 
       <form class="card p-2" action="{% url 'checkout_sepa' %}" method="GET">
@@ -61,7 +69,7 @@
           <input type="hidden" value="{{ plan }}" name="plan" />
           <input type="hidden" value="{{ coupon }}" name="coupon" />
 
-          <button type="submit" class="btn btn-secondary">Pay kar</button>
+          <button type="submit" class="btn btn-secondary">Pay Now</button>
 
 
 
